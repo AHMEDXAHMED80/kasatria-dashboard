@@ -4,7 +4,8 @@
 // 👉 PASTE YOUR SPREADSHEET ID HERE:
 const SPREADSHEET_ID = '1YU0bPbBEUefVL73LAFTStTkDluLGgYkO8O4xETzdCTI';
 // 👉 SPECIFY THE RANGE (e.g., 'sheet1!A2:F' to read from row 2 onwards)
-const SHEET_RANGE = 'sheet1!A2:F';
+// Reading up to row 200 to ensure we capture all data
+const SHEET_RANGE = 'sheet1!A2:F200';
 
 // Google API settings
 // 👉 Get your API Key from Google Cloud Console:
@@ -89,15 +90,21 @@ async function fetchSheetData() {
 
     // Map rows to person objects
     // Columns: Name(A), Photo(B), Age(C), Country(D), Interest(E), NetWorth(F)
-    const people = rows.map((row, index) => ({
-      name: row[0] || `Person ${index + 1}`,
-      photo: row[1] || '',
-      age: row[2] || '',
-      country: row[3] || 'Unknown',
-      interest: row[4] || '',
-      netWorth: parseFloat(row[5]?.replace(/[^0-9.,]/g, '').replace(/,/g, '')) || 0,
-    }));
+    const people = rows
+      .filter(row => {
+        // Only filter out completely empty rows (all cells empty)
+        return row && row.length > 0 && row.some(cell => cell && cell.trim() !== '');
+      })
+      .map((row, index) => ({
+        name: row[0] || `Person ${index + 1}`,
+        photo: row[1] || '',
+        age: row[2] || '',
+        country: row[3] || 'Unknown',
+        interest: row[4] || '',
+        netWorth: parseFloat(row[5]?.replace(/[^0-9.,]/g, '').replace(/,/g, '')) || 0,
+      }));
 
+    console.log(`✅ Processed ${people.length} valid rows from sheet`);
     return people;
     
   } catch (error) {
@@ -260,11 +267,11 @@ function createPersonTile(person, index) {
 // ============================================================
 
 /**
- * TABLE LAYOUT: 20 columns x 10 rows
+ * TABLE LAYOUT: Periodic table style (dynamic grid based on count)
  */
 function generateTableLayout(count) {
   const cols = 20;
-  const rows = 10;
+  const rows = Math.ceil(count / cols); // Dynamic rows based on actual count
   
   for (let i = 0; i < count; i++) {
     const col = i % cols;
