@@ -3,9 +3,9 @@
 // ============================================================
 // 👉 PASTE YOUR SPREADSHEET ID HERE:
 const SPREADSHEET_ID = '1YU0bPbBEUefVL73LAFTStTkDluLGgYkO8O4xETzdCTI';
-// 👉 SPECIFY THE RANGE (e.g., 'sheet1!A2:F' to read from row 2 onwards)
-// Reading up to row 200 to ensure we capture all data
-const SHEET_RANGE = 'sheet1!A2:F200';
+// 👉 SPECIFY THE RANGE (e.g., 'A2:F' to read from row 2 onwards)
+// Using simple range without sheet name
+const SHEET_RANGE = 'A2:F';
 
 // Google API settings
 // 👉 Get your API Key from Google Cloud Console:
@@ -77,24 +77,25 @@ async function fetchSheetData() {
     const response = await fetch(url);
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status} - Make sure your sheet is public and API key is valid`);
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ API Error Details:', errorData);
+      throw new Error(`HTTP error! status: ${response.status} - ${errorData.error?.message || 'Make sure your sheet is public and API key is valid'}`);
     }
     
     const data = await response.json();
     const rows = data.values;
+    
+    console.log(`📋 Raw rows received from Google Sheets: ${rows ? rows.length : 0}`);
     
     if (!rows || rows.length === 0) {
       console.warn('⚠️ No data found in sheet');
       return [];
     }
 
-    // Map rows to person objects
+    // Map rows to person objects - filter out rows with no name (empty rows)
     // Columns: Name(A), Photo(B), Age(C), Country(D), Interest(E), NetWorth(F)
     const people = rows
-      .filter(row => {
-        // Only filter out completely empty rows (all cells empty)
-        return row && row.length > 0 && row.some(cell => cell && cell.trim() !== '');
-      })
+      .filter(row => row[0] && row[0].trim() !== '') // Only keep rows with a name
       .map((row, index) => ({
         name: row[0] || `Person ${index + 1}`,
         photo: row[1] || '',
@@ -104,7 +105,9 @@ async function fetchSheetData() {
         netWorth: parseFloat(row[5]?.replace(/[^0-9.,]/g, '').replace(/,/g, '')) || 0,
       }));
 
-    console.log(`✅ Processed ${people.length} valid rows from sheet`);
+    console.log(`✅ Total people processed: ${people.length}`);
+    console.log(`📊 Sample of first person:`, people[0]);
+    console.log(`📊 Sample of last person:`, people[people.length - 1]);
     return people;
     
   } catch (error) {
